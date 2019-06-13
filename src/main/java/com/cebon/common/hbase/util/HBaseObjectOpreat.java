@@ -1,6 +1,7 @@
 package com.cebon.common.hbase.util;
 
 import jdk.nashorn.internal.objects.annotations.Setter;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -14,6 +15,8 @@ import org.springframework.util.StringUtils;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -24,12 +27,14 @@ import java.util.*;
 @Slf4j
 @Getter
 public class HBaseObjectOpreat<T> {
+    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-mm-dd hh:MM:ss");
     private Class<T> mappedClass;
     private Map<String, PropertyDescriptor> mappedFields;
     private Set<String> mappedProperties;
     private PropertyDescriptor[] pds;
     HashSet populatedProperties;
     private BeanWrapper beanWrapper;
+    private T t;
     public HBaseObjectOpreat(Class<T> clazz) {
         this.mappedClass = clazz;
         mappedFields = new HashMap<>();
@@ -61,6 +66,10 @@ public class HBaseObjectOpreat<T> {
                     System.out.println(c.getName());
 //                  System.out.println(key+":"+value);
                   if(value != null) {
+                      if("java.util.Date".equals(c)){
+                          map.put(key, this.simpleDateFormat.format(value));
+                          continue;
+                      }
                       map.put(key, value);
                   }
                 } catch (IllegalAccessException e) {
@@ -73,20 +82,20 @@ public class HBaseObjectOpreat<T> {
         return null;
     }
 
-//    public T setProperetyToClass (String columnFamilyName, Result result)  {
-//        T t;
-//        this.mappedFields.forEach((key,value)-> {
-//            String propertyName = value.getName();
-//            byte[] resultValue = result.getValue(columnFamilyName.getBytes(), propertyName.getBytes());
-//            if(resultValue != null && resultValue.length>0) {
-//
-//              Class c =  value.getPropertyType();
-//              System.out.println(c.getName());
-//            }
-//
-//        });
-//        return t;
-//    }
+    public T setProperetyToClass (String columnFamilyName, Result result)  {
+        T t = null;
+        this.mappedFields.forEach((key,pb)-> {
+            String propertyName = pb.getName();
+            byte[] resultValue = result.getValue(columnFamilyName.getBytes(), propertyName.getBytes());
+            if(resultValue != null && resultValue.length>0) {
+              Class c =  pb.getPropertyType();
+              System.out.println(c.getName());
+              setPropertyByType(c.getName(),t,pb.getWriteMethod(),new String(resultValue));
+            }
+
+        });
+        return t;
+    }
     private String underscoreName(String name) {
         if (!StringUtils.hasLength(name)) {
             return "";
@@ -128,6 +137,56 @@ public class HBaseObjectOpreat<T> {
             }
         }
         return this;
+    }
+
+
+    private void setPropertyByType(String type, T t, Method method, String value) {
+
+            try {
+
+                if("java.lang.Byte".equals(type) || "byte".equals(type)) {
+                    Byte byteValue = Byte.parseByte(value);
+                    method.invoke(t,byteValue);
+                }
+                if("java.lang.Short".equals(type) || "short".equals(type)) {
+                    Short shortvalue = Short.parseShort(value);
+                    method.invoke(t,shortvalue);
+                }
+                if("java.lang.Integer".equals(type) || "int".equals(type)) {
+                    Integer integer = Integer.parseInt(value);
+                    method.invoke(t,value);
+                }
+                if("java.lang.Long".equals(type) || "long".equals(type)) {
+                    Long longValue = Long.parseLong(value);
+                    method.invoke(t,longValue);
+                }
+                if("java.lang.Float".equals(type) || "float".equals(type)) {
+                    Float floatValue = Float.parseFloat(value);
+                    method.invoke(t,floatValue);
+                }
+                if("java.lang.Double".equals(type) || "double".equals(type)) {
+                    Double doublValue = Double.parseDouble(value);
+                    method.invoke(t,doublValue);
+                }
+                if("java.lang.Boolean".equals(type) || "boolean".equals(type)) {
+                    Boolean booleanValue = Boolean.parseBoolean(type);
+                    method.invoke(t,booleanValue);
+                }
+                if("java.lang.String".equals(type)) {
+                    method.invoke(t, value);
+                }
+                if("java.util.Date".equals(type)) {
+                    Date date = this.simpleDateFormat.parse(value);
+                    method.invoke(t,date);
+                }
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+
     }
 
 }
