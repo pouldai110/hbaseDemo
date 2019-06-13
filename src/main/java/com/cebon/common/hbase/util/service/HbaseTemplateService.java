@@ -52,9 +52,11 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
         return false;
     }
 
-    @Override
-    public <T> List<T> searchAll(String tableName, Class<T> c) {
-        return hbaseTemplate.find(tableName, new Scan(), new RowMapper<T>() {
+    private  <T>List<T> getListByCondition(Class<T> c, String tableName, Scan scan){
+        if (c == null || StringUtils.isBlank(tableName)) {
+            return null;
+        }
+        return hbaseTemplate.find(tableName, scan, new RowMapper<T>() {
             @Override
             public T mapRow(Result result, int rowNum) throws Exception {
                 T pojo = c.newInstance();
@@ -69,6 +71,11 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
                 return pojo;
             }
         });
+    }
+
+    @Override
+    public <T> List<T> searchAll(String tableName, Class<T> c) {
+        return this.getListByCondition(c,tableName,new Scan());
     }
 
     @Override
@@ -129,42 +136,10 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
         if (c == null || StringUtils.isBlank(tableName)) {
             return null;
         }
-//        List<Filter>  list=new ArrayList<>();
-//        String targetSet=jsonObject.getString("targetSet");
-//        String targetSonSet=jsonObject.getString("targetSonSet");
-//        String target=jsonObject.getString("target");
-//        if(StringUtils.isNotBlank(targetSet)){
-//            list.add(new SingleColumnValueFilter(Bytes.toBytes("targetSet"),null,
-//                    CompareFilter.CompareOp.EQUAL,Bytes.toBytes(targetSet)));
-//        }
-//        if(StringUtils.isNotBlank(targetSonSet)){
-//            list.add(new SingleColumnValueFilter(Bytes.toBytes("targetSonSet"),null,
-//                    CompareFilter.CompareOp.EQUAL,Bytes.toBytes(targetSonSet)));
-//        }
-//        if(StringUtils.isNotBlank(target)){
-//            list.add(new SingleColumnValueFilter(Bytes.toBytes("target"),null,
-//                    CompareFilter.CompareOp.EQUAL,Bytes.toBytes(target)));
-//        }
-//        FilterList filterList=new FilterList(list);
         Scan scan=new Scan();
         scan.setFilter(filterList);
-        return hbaseTemplate.find(tableName, scan, new RowMapper<T>() {
-            @Override
-            public T mapRow(Result result, int rowNum) throws Exception {
-                T pojo = c.newInstance();
-                BeanWrapper beanWrapper = PropertyAccessorFactory.forBeanPropertyAccess(pojo);
-                List<Cell> ceList = result.listCells();
-                for (Cell cellItem : ceList) {
-                    String cellName = new String(CellUtil.cloneQualifier(cellItem));
-                    if (!"class".equals(cellName)) {
-                        beanWrapper.setPropertyValue(cellName, new String(CellUtil.cloneValue(cellItem)));
-                    }
-                }
-                return pojo;
-            }
-        });
+        return this.getListByCondition(c,tableName,scan);
     }
-
 
     @Override
     public Map<String, Object> getOneToMap(String tableName, String rowName) {
@@ -217,21 +192,7 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
         scan.setStopRow(Bytes.toBytes(endRow));
         scan.setCacheBlocks(false);
         scan.setCaching(2000);
-        return hbaseTemplate.find(tableName, scan, new RowMapper<T>() {
-            @Override
-            public T mapRow(Result result, int rowNum) throws Exception {
-                T pojo = c.newInstance();
-                BeanWrapper beanWrapper = PropertyAccessorFactory.forBeanPropertyAccess(pojo);
-                List<Cell> ceList = result.listCells();
-                for (Cell cellItem : ceList) {
-                    String cellName = new String(CellUtil.cloneQualifier(cellItem));
-                    if (!"class".equals(cellName)) {
-                        beanWrapper.setPropertyValue(cellName, new String(CellUtil.cloneValue(cellItem)));
-                    }
-                }
-                return pojo;
-            }
-        });
+        return this.getListByCondition(c,tableName,scan);
     }
 
     @Override
@@ -239,25 +200,6 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
         Scan scan = new Scan();
 //        scan.addFamily(Bytes.toBytes(family));
         scan.setFilter(scvf);
-        return hbaseTemplate.find(tableName, scan, new RowMapper<T>() {
-            @Override
-            public T mapRow(Result result, int rowNum) throws Exception {
-                List<Cell> ceList = result.listCells();
-                JSONObject obj = new JSONObject();
-                T item = clazz.newInstance();
-                if (ceList != null && ceList.size() > 0) {
-                    for (Cell cell : ceList) {
-                        obj.put(
-                                Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
-                                        cell.getQualifierLength()),
-                                Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
-                    }
-                } else {
-                    return null;
-                }
-                item = JSON.parseObject(obj.toJSONString(), clazz);
-                return item;
-            }
-        });
+        return this.getListByCondition(clazz,tableName,scan);
     }
 }
