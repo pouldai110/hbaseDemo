@@ -13,7 +13,7 @@ import java.util.Date;
 public class User {
     private String name;
     private String passowd;
-    private Integer sex;
+    private int sex;
     private String age;
     private Date date;
 

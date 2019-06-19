@@ -8,7 +8,6 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.PropertyAccessorFactory;
@@ -18,6 +17,7 @@ import org.springframework.data.hadoop.hbase.TableCallback;
 
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +91,12 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
                 Put put = new Put(Bytes.toBytes(rowkey));
                 for (PropertyDescriptor propertyDescriptor : pds) {
                     String properName = propertyDescriptor.getName();
-                    String value = beanWrapper.getPropertyValue(properName).toString();
+                    String properType = propertyDescriptor.getPropertyType().getCanonicalName();
+                    String value = beanWrapper.getPropertyValue(properName)== null ? null:beanWrapper.getPropertyValue(properName).toString();
+                    if(StringUtils.isNotEmpty(value) && "java.util.Date".equals(properType)) {
+                        Date date = (Date)beanWrapper.getPropertyValue(properName);
+                        value = date.getTime()+"";
+                    }
                     if (!StringUtils.isBlank(value)) {
                         put.add(Bytes.toBytes(column), Bytes.toBytes(properName), Bytes.toBytes(value));
                     }
@@ -198,7 +203,6 @@ public class HbaseTemplateService  implements IHbaseTemplateService{
     @Override
     public <T> List<T> searchAllByFilter(Class<T> clazz,String tableName,SingleColumnValueFilter scvf) {
         Scan scan = new Scan();
-//        scan.addFamily(Bytes.toBytes(family));
         scan.setFilter(scvf);
         return this.getListByCondition(clazz,tableName,scan);
     }
