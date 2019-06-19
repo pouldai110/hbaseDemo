@@ -9,12 +9,7 @@ import java.util.Map;
 
 
 public interface IHbaseTemplateService {
-    /**
-     * 在HBase上面创建表
-     * @param tableName  表名
-     * @param family 列族名(可以同时传入多个列族名)
-     * @return
-     */
+
     public boolean createTable(String tableName,String ...family);
 
     /**
