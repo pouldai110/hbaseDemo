@@ -20,21 +20,21 @@ import java.util.Map;
 /**
  * @Auther: daiyp
  * @Date: 2019/6/19
- * @Description:
+ * @Description: hdfs文件操作
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Slf4j
-public class HDFSService {
+public class HDFSTemplateService {
 
     private String path;
 
     private String username;
 
-    private static String hdfsPath;
-    private static String hdfsName;
+    private static String hdfsPath = "hdfs://192.168.99.246:9000";
+    private static String hdfsName = "root";
 
     /**
      * 获取HDFS配置信息
@@ -280,7 +280,6 @@ public class HDFSService {
         try {
             inputStream = fs.open(oldPath);
             outputStream = fs.create(newPath);
-
             IOUtils.copyBytes(inputStream, outputStream, 1024*1024*64,false);
             return "copy file success";
         } finally {
